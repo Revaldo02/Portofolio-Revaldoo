@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Revaldo Adnan Maulana · Portfolio</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            background: linear-gradient(145deg, #4a0e0e 0%, #1a0303 100%);
+            color: #f0f0f0;
+            font-family: system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+            line-height: 1.5;
+            overflow-x: hidden;
+            position: relative;
+        }
+        #particleCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .main-content, .splash { position: relative; z-index: 1; }
+        .splash {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 0.8s ease, visibility 0.8s ease;
+        }
+        .splash.hide { opacity: 0; visibility: hidden; }
+        .start-btn {
+            background: linear-gradient(135deg, #ff3b3b, #9b1d1d);
+            border: none;
+            padding: 14px 42px;
+            border-radius: 50px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+        }
+        .welcome-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            backdrop-filter: blur(8px);
+            transition: opacity 0.5s;
+        }
+        .welcome-text {
+            font-size: 1.8rem;
+            font-weight: bold;
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #ff4d00, #ff9900, #ffcc00, #ff6600);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            text-shadow: 0 0 5px #ff4400;
+            animation: flameFlicker 0.4s infinite alternate;
+        }
+        @keyframes flameFlicker {
+            0% { text-shadow: 0 0 3px #ff4400, 0 0 8px #ff2200; }
+            100% { text-shadow: 0 0 12px #ffaa00, 0 0 20px #ff4400; }
+        }
+        .welcome-overlay.hide { opacity: 0; visibility: hidden; }
+        .main-content { opacity: 0; transition: opacity 0.5s ease; }
+        .main-content.visible { opacity: 1; }
+        header {
+            background-color: #220808cc;
+            backdrop-filter: blur(10px);
+            padding: 12px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid #6b2a2a;
+        }
+        nav ul { list-style: none; text-align: center; }
+        nav ul li { display: inline; margin: 0 15px; }
+        nav ul li a { text-decoration: none; color: #ffcccc; font-weight: 600; font-size: 0.9rem; }
+        #hero {
+            text-align: center;
+            padding: 40px 20px;
+            background: rgba(0,0,0,0.3);
+            border-bottom: 1px solid #6b2a2a;
+        }
+        .hero-content { display: flex; flex-direction: column; align-items: center; }
+        .profile-pic {
+            width: 130px;
+            height: 130px;
+            border-radius: 50%;
+            margin-bottom: 10px;
+            border: 3px solid #ff6666;
+            object-fit: cover;
+            cursor: pointer;
+            background: #2a0a0a;
+        }
+        .change-photo-btn {
+            background: #ff6666;
+            color: #1a0303;
+            border: none;
+            padding: 5px 14px;
+            border-radius: 40px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            margin: 5px 0 10px;
+            cursor: pointer;
+            display: none;
+        }
+        .hero-content h2 { font-size: 1.6rem; margin: 5px 0; }
+        .hero-content p { font-size: 0.9rem; max-width: 90%; margin: 0 auto; }
+        section { padding: 40px 20px; max-width: 1200px; margin: 0 auto; opacity: 0; transform: translateY(20px); transition: opacity 0.5s ease, transform 0.5s ease; }
+        section.revealed { opacity: 1; transform: translateY(0); }
+        h2 {
+            text-align: center;
+            color: #ff8888;
+            margin-bottom: 25px;
+            font-size: 1.7rem;
+            border-left: 4px solid #ff6666;
+            display: inline-block;
+            padding: 0 15px;
+        }
+        .section-title { text-align: center; }
+        .about-text { text-align: center; line-height: 1.6; max-width: 800px; margin: 0 auto; font-size: 0.95rem; }
+        .education-container, .project-container, .certificate-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+        }
+        .education-card, .project-card, .certificate-card {
+            background-color: #1f0c0c;
+            padding: 15px;
+            border-radius: 16px;
+            text-align: center;
+            border: 1px solid #4a1a1a;
+        }
+        .education-card img, .project-card img, .certificate-card img {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+            margin-bottom: 8px;
+            cursor: pointer;
+        }
+        .delete-item {
+            background: #9b2c2c;
+            border: none;
+            padding: 4px 12px;
+            border-radius: 30px;
+            color: white;
+            font-size: 0.7rem;
+            margin-top: 8px;
+            cursor: pointer;
+        }
+        .add-btn {
+            background: #ff6666;
+            color: #1a0505;
+            border: none;
+            padding: 5px 16px;
+            border-radius: 30px;
+            font-weight: bold;
+            margin-top: 15px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .exit-edit-btn {
+            background: #dc2626;
+            color: white;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-left: 8px;
+        }
+        .horizontal-scroll { display: flex; overflow-x: auto; gap: 1rem; padding-bottom: 0.5rem; }
+        .horizontal-scroll::-webkit-scrollbar { height: 4px; }
+        .media-item {
+            flex: 0 0 220px;
+            background: #1f0c0c;
+            border-radius: 1rem;
+            padding: 0.5rem;
+            text-align: center;
+            border: 1px solid #4a1a1a;
+        }
+        .media-item img, .media-item video {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 0.8rem;
+            cursor: pointer;
+        }
+        .inline-form {
+            margin-top: 1rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            background: #2a0c0c;
+            padding: 0.8rem;
+            border-radius: 1rem;
+        }
+        input, textarea {
+            background: #1e0a0a;
+            border: 1px solid #6b2a2a;
+            color: white;
+            border-radius: 12px;
+            padding: 6px 10px;
+            font-family: inherit;
+            font-size: 0.8rem;
+        }
+        .social-icons { text-align: center; }
+        .social-icons a img { width: 42px; margin: 0 12px; transition: transform 0.2s; filter: brightness(0.9); }
+        footer {
+            background-color: #0c0303;
+            text-align: center;
+            padding: 15px;
+            margin-top: 30px;
+            font-size: 0.7rem;
+            color: #aa7777;
+            border-top: 1px solid #4a1a1a;
+        }
+        .edit-badge {
+            position: fixed;
+            bottom: 15px;
+            right: 15px;
+            background: #10b981;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 40px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            z-index: 999;
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .editable-text { cursor: pointer; padding: 2px 4px; border-radius: 8px; }
+        .edit-mode-active .editable-text:hover { background: #3a1515; outline: 1px dashed #ff8888; }
+        .lightbox {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 3000;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+        .lightbox.active { display: flex; }
+        .lightbox img, .lightbox video { max-width: 90%; max-height: 90%; border-radius: 12px; }
+        .close-lightbox {
+            position: absolute;
+            top: 20px;
+            right: 25px;
+            font-size: 2rem;
+            color: white;
+            background: rgba(0,0,0,0.5);
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .warning { font-size: 0.7rem; color: #ffaa66; text-align: center; margin-top: 5px; }
+        @media (max-width: 700px) {
+            .welcome-text { font-size: 1.3rem; }
+            .hero-content h2 { font-size: 1.4rem; }
+            .media-item { flex: 0 0 180px; }
+        }
+    </style>
+</head>
+<body>
+<canvas id="particleCanvas"></canvas>
+<div class="splash" id="splashScreen">
+    <div class="splash-content"><button class="start-btn" id="startBtn">▶ MULAI</button></div>
+</div>
+<div class="main-content" id="mainContent">
+    <header>
+        <nav>
+            <ul>
+                <li><a href="#about">Tentang</a></li>
+                <li><a href="#education">Pendidikan</a></li>
+                <li><a href="#projects">Proyek</a></li>
+                <li><a href="#gallery-foto">Foto</a></li>
+                <li><a href="#gallery-video">Video</a></li>
+                <li><a href="#social">Media</a></li>
+            </ul>
+        </nav>
+    </header>
+    <section id="hero">
+        <div class="hero-content">
+            <img id="profileImg" src="https://ui-avatars.com/api/?name=Revaldo+Adnan&background=ff6666&color=fff&bold=true&size=130&length=2" class="profile-pic">
+            <button id="changePhotoBtn" class="change-photo-btn">📷 Ubah Foto</button>
+            <h2 class="editable-text" data-field="heroName">Revaldo Adnan Maulana</h2>
+            <p class="editable-text" data-field="heroDesc">pelajar SMA dengan minat pada pengembangan sistem, analisis data, penerapan teknologi modern, dan cara kerja dunia</p>
+        </div>
+    </section>
+    <section id="about">
+        <div class="section-title"><h2 class="editable-text" data-field="aboutTitle">Tentang Saya</h2></div>
+        <div class="about-text editable-text" data-field="aboutText">Nama saya Revaldo Adnan Maulana, lahir pada 2 Juli 2008 dan berasal dari Bobojong, Bandung. Saat ini saya merupakan siswa SMA Handayani 01 Pameungpeuk. Saya memiliki minat dalam pengembangan sistem, analisis data, dan penerapan teknologi untuk mendukung kebutuhan organisasi maupun individu. Meskipun masih dalam tahap belajar, saya terus berusaha mengembangkan pengetahuan dan keterampilan di bidang teknologi informasi.</div>
+    </section>
+    <section id="education">
+        <div class="section-title"><h2 class="editable-text" data-field="eduTitle">Pendidikan</h2></div>
+        <div id="educationContainer" class="education-container"></div>
+        <div id="eduAddWrapper" style="display:none;"><button id="addEduBtn" class="add-btn">+ Tambah</button></div>
+        <div id="eduForm" style="display:none;" class="inline-form">
+            <input type="text" id="eduName" placeholder="Nama Institusi">
+            <input type="text" id="eduYear" placeholder="Tahun">
+            <button id="saveEduBtn">Simpan</button>
+            <button id="cancelEduBtn" style="background:#6b2a2a;">Batal</button>
+        </div>
+    </section>
+    <section id="projects">
+        <div class="section-title"><h2 class="editable-text" data-field="projectTitle">Proyek Saya</h2></div>
+        <div id="projectContainer" class="project-container"></div>
+        <div id="projectAddWrapper" style="display:none;"><button id="addProjectBtn" class="add-btn">+ Tambah</button></div>
+        <div id="projectForm" style="display:none;" class="inline-form">
+            <input type="text" id="projTitle" placeholder="Nama Proyek">
+            <textarea id="projDesc" rows="1" placeholder="Deskripsi"></textarea>
+            <button id="saveProjBtn">Simpan</button>
+            <button id="cancelProjBtn" style="background:#6b2a2a;">Batal</button>
+        </div>
+    </section>
+    <section id="gallery-foto">
+        <div class="section-title"><h2 class="editable-text" data-field="fotoTitle">📸 Galeri Foto</h2></div>
+        <div id="fotoContainer" class="horizontal-scroll"></div>
+        <div id="fotoAddWrapper" style="display:none;">
+            <button id="addFotoBtnFile" class="add-btn">+ Upload File</button>
+            <button id="addFotoUrlBtn" class="add-btn" style="background:#ffaa33;">+ URL</button>
+        </div>
+        <input type="file" id="fotoFileInput" accept="image/*" multiple style="display:none;">
+        <div id="fotoUrlInput" style="display:none; margin-top:8px;" class="inline-form">
+            <input type="text" id="fotoUrlValue" placeholder="URL gambar">
+            <button id="submitFotoUrl">Tambah</button>
+            <button id="cancelFotoUrl" style="background:#6b2a2a;">Batal</button>
+        </div>
+    </section>
+    <section id="gallery-video">
+        <div class="section-title"><h2 class="editable-text" data-field="videoTitle">🎬 Galeri Video</h2></div>
+        <div id="videoContainer" class="horizontal-scroll"></div>
+        <div id="videoAddWrapper" style="display:none;">
+            <button id="addVideoBtnFile" class="add-btn">+ Upload File</button>
+            <button id="addVideoUrlBtn" class="add-btn" style="background:#ffaa33;">+ URL</button>
+        </div>
+        <input type="file" id="videoFileInput" accept="video/mp4,video/webm, video/ogg" style="display:none;">
+        <div id="videoUrlInput" style="display:none; margin-top:8px;" class="inline-form">
+            <input type="text" id="videoUrlValue" placeholder="URL video">
+            <button id="submitVideoUrl">Tambah</button>
+            <button id="cancelVideoUrl" style="background:#6b2a2a;">Batal</button>
+        </div>
+        <div class="warning">⚠️ Max file 100MB • Gunakan URL untuk video besar</div>
+    </section>
+    <section id="certificates">
+        <div class="section-title"><h2 class="editable-text" data-field="certTitle">Sertifikat</h2></div>
+        <div id="certContainer" class="certificate-container"></div>
+        <div id="certAddWrapper" style="display:none;"><button id="addCertBtn" class="add-btn">+ Tambah</button></div>
+        <div id="certForm" style="display:none;" class="inline-form">
+            <input type="text" id="certName" placeholder="Nama Sertifikat">
+            <input type="file" id="certImageInput" accept="image/*">
+            <button id="saveCertBtn">Simpan</button>
+            <button id="cancelCertBtn" style="background:#6b2a2a;">Batal</button>
+        </div>
+    </section>
+    <section id="social">
+        <div class="section-title"><h2 class="editable-text" data-field="socialTitle">Social Media</h2></div>
+        <div class="social-icons">
+            <a href="https://www.instagram.com/revaldo.am" id="igLink" target="_blank"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram"></a>
+            <a href="https://www.tiktok.com/@revaldoadnanmaulana" id="ttLink" target="_blank"><img src="https://cdn-icons-png.flaticon.com/512/3046/3046126.png" alt="TikTok"></a>
+            <a href="https://wa.me/6285135910757" id="waLink" target="_blank"><img src="https://cdn-icons-png.flaticon.com/512/3670/3670051.png" alt="WhatsApp"></a>
+        </div>
+    </section>
+    <footer><p id="footerText" class="editable-text" data-field="footer">© 2026 Revaldo Adnan Maulana</p></footer>
+</div>
+<div id="lightbox" class="lightbox" onclick="closeLightbox()">
+    <span class="close-lightbox" onclick="closeLightbox()">&times;</span>
+    <img id="lightboxImage" style="display:none;">
+    <video id="lightboxVideo" controls style="display:none;"></video>
+</div>
+
+<script>
+    // Firebase Config (sudah diisi)
+    const firebaseConfig = {
+        apiKey: "AIzaSyDFoDHeS1k5nBP8_V1QlNBwFOaLtFhqP6I",
+        authDomain: "portofolio-revaldo.firebaseapp.com",
+        databaseURL: "https://portofolio-revaldo-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "portofolio-revaldo",
+        storageBucket: "portofolio-revaldo.firebasestorage.app",
+        messagingSenderId: "846806163949",
+        appId: "1:846806163949:web:09cfdbb48128f4139e07e4"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+    const dbRef = database.ref('/portofolio');
+
+    // ========== PARTIKEL RINGAN (50 partikel) ==========
+    const canvas = document.getElementById('particleCanvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+    function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    class Particle {
+        constructor() {
+            this.x = Math.random() * canvas.width;
+            this.y = Math.random() * canvas.height;
+            this.size = Math.random() * 3 + 1;
+            this.speedX = Math.random() * 0.3 - 0.15;
+            this.speedY = Math.random() * 0.3 - 0.15;
+            this.color = `rgba(180, 60, 60, ${Math.random() * 0.3 + 0.1})`;
+        }
+        update() {
+            this.x += this.speedX;
+            this.y += this.speedY;
+            if (this.x < 0) this.x = canvas.width;
+            if (this.x > canvas.width) this.x = 0;
+            if (this.y < 0) this.y = canvas.height;
+            if (this.y > canvas.height) this.y = 0;
+        }
+        draw() { ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fillStyle = this.color; ctx.fill(); }
+    }
+    function initParticles() { particles = []; for (let i = 0; i < 50; i++) particles.push(new Particle()); }
+    function animateParticles() { ctx.clearRect(0, 0, canvas.width, canvas.height); particles.forEach(p => { p.update(); p.draw(); }); requestAnimationFrame(animateParticles); }
+    window.addEventListener('resize', () => { resizeCanvas(); initParticles(); });
+    resizeCanvas(); initParticles(); animateParticles();
+
+    // scroll reveal
+    const sections = document.querySelectorAll('section:not(#hero)');
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => { if (entry.isIntersecting) { entry.target.classList.add('revealed'); observer.unobserve(entry.target); } });
+    }, { threshold: 0.1 });
+    sections.forEach(section => observer.observe(section));
+    document.getElementById('hero').style.opacity = '1';
+
+    // ========== DATA & FIREBASE ==========
+    let educationList = [], projectsList = [], certificatesList = [], fotoList = [], videoList = [];
+    let editMode = false;
+    const SECRET_CODE = "revaldo2025";
+
+    function saveAllToFirebase() {
+        const data = {
+            education: educationList, projects: projectsList, certificates: certificatesList,
+            fotos: fotoList, videos: videoList,
+            profilePhoto: document.getElementById("profileImg").src,
+            editableTexts: {
+                heroName: qs('[data-field="heroName"]')?.innerText || "",
+                heroDesc: qs('[data-field="heroDesc"]')?.innerText || "",
+                aboutTitle: qs('[data-field="aboutTitle"]')?.innerText || "",
+                aboutText: qs('[data-field="aboutText"]')?.innerText || "",
+                eduTitle: qs('[data-field="eduTitle"]')?.innerText || "",
+                projectTitle: qs('[data-field="projectTitle"]')?.innerText || "",
+                fotoTitle: qs('[data-field="fotoTitle"]')?.innerText || "",
+                videoTitle: qs('[data-field="videoTitle"]')?.innerText || "",
+                certTitle: qs('[data-field="certTitle"]')?.innerText || "",
+                socialTitle: qs('[data-field="socialTitle"]')?.innerText || "",
+                footer: qs('[data-field="footer"]')?.innerText || ""
+            },
+            socialLinks: {
+                ig: document.getElementById("igLink")?.getAttribute("href") || "",
+                tt: document.getElementById("ttLink")?.getAttribute("href") || "",
+                wa: document.getElementById("waLink")?.getAttribute("href") || ""
+            }
+        };
+        dbRef.set(data).catch(e => console.error(e));
+    }
+
+    function loadFromFirebase() {
+        dbRef.once("value").then(snap => {
+            const d = snap.val();
+            if(d){
+                educationList = d.education || [];
+                projectsList = d.projects || [];
+                certificatesList = d.certificates || [];
+                fotoList = d.fotos || [];
+                videoList = d.videos || [];
+                if(d.profilePhoto) document.getElementById("profileImg").src = d.profilePhoto;
+                const texts = d.editableTexts || {};
+                for(let k in texts){ let el = qs(`[data-field="${k}"]`); if(el) el.innerText = texts[k]; }
+                const links = d.socialLinks || {};
+                if(links.ig) document.getElementById("igLink").setAttribute("href", links.ig);
+                if(links.tt) document.getElementById("ttLink").setAttribute("href", links.tt);
+                if(links.wa) document.getElementById("waLink").setAttribute("href", links.wa);
+            } else {
+                // default data
+                educationList = [
+                    { id: 1, name: "SD N 1 Baktiseraga", year: "Lulus 2018", img: "https://cdn-icons-png.flaticon.com/512/869/869636.png" },
+                    { id: 2, name: "SMP N 2 Singaraja", year: "Lulus 2021", img: "https://cdn-icons-png.flaticon.com/512/2952/2952930.png" },
+                    { id: 3, name: "SMA N 4 Singaraja", year: "Lulus 2024", img: "https://cdn-icons-png.flaticon.com/512/1995/1995572.png" },
+                    { id: 4, name: "Universitas Pendidikan Ganesha", year: "Teknik Informatika", img: "https://cdn-icons-png.flaticon.com/512/2232/2232688.png" }
+                ];
+                projectsList = [{ id: 1, name: "Bali Bot", desc: "Bot informasi wisata", img: "https://cdn-icons-png.flaticon.com/512/4712/4712022.png" }];
+                certificatesList = [
+                    { id: 1, name: "JavaScript Dasar", img: "https://cdn-icons-png.flaticon.com/512/1055/1055687.png" },
+                    { id: 2, name: "Frontend Dev", img: "https://cdn-icons-png.flaticon.com/512/919/919826.png" },
+                    { id: 3, name: "UI/UX", img: "https://cdn-icons-png.flaticon.com/512/2583/2583410.png" }
+                ];
+                fotoList = [{ id: 1, url: "https://picsum.photos/id/20/300/200" },{ id: 2, url: "https://picsum.photos/id/26/300/200" }];
+                videoList = [];
+                saveAllToFirebase();
+            }
+            renderAll();
+        }).catch(e => console.error(e));
+    }
+
+    function renderAll(){ renderEducation(); renderProjects(); renderCertificates(); renderFotos(); renderVideos(); }
+    function qs(s){ return document.querySelector(s); }
+    function escapeHtml(str){ return String(str).replace(/[&<>]/g, m => m==='&'?'&amp;':m==='<'?'&lt;':'&gt;'); }
+
+    function changeLogo(type, id){
+        if(!editMode) return;
+        const inp = document.createElement("input");
+        inp.type = "file"; inp.accept = "image/*";
+        inp.onchange = (e) => {
+            const file = e.target.files[0];
+            if(file && file.type.startsWith("image/")){
+                const reader = new FileReader();
+                reader.onload = ev => {
+                    if(type === 'education') { let item = educationList.find(x=>x.id==id); if(item) item.img = ev.target.result; saveAllToFirebase(); renderEducation(); }
+                    else if(type === 'project') { let item = projectsList.find(x=>x.id==id); if(item) item.img = ev.target.result; saveAllToFirebase(); renderProjects(); }
+                    else if(type === 'certificate') { let item = certificatesList.find(x=>x.id==id); if(item) item.img = ev.target.result; saveAllToFirebase(); renderCertificates(); }
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+        inp.click();
+    }
+
+    function renderEducation(){
+        const cont = document.getElementById("educationContainer");
+        if(!cont) return;
+        cont.innerHTML = educationList.map(edu => `<div class="education-card"><img src="${edu.img}" onclick="${editMode?`changeLogo('education','${edu.id}')`:''}" style="cursor:${editMode?'pointer':'default'}"><h3>${escapeHtml(edu.name)}</h3><p>${escapeHtml(edu.year)}</p>${editMode?`<button class="delete-item" onclick="deleteItem('education','${edu.id}')">Hapus</button>`:''}</div>`).join('');
+        if(editMode) document.querySelectorAll('#educationContainer .education-card img').forEach(i=>{i.style.cursor='pointer'; i.title='Ganti logo';});
+    }
+    function renderProjects(){
+        const cont = document.getElementById("projectContainer");
+        if(!cont) return;
+        cont.innerHTML = projectsList.map(proj => `<div class="project-card"><img src="${proj.img}" onclick="${editMode?`changeLogo('project','${proj.id}')`:''}" style="cursor:${editMode?'pointer':'default'}"><h3>${escapeHtml(proj.name)}</h3><p>${escapeHtml(proj.desc)}</p>${editMode?`<button class="delete-item" onclick="deleteItem('project','${proj.id}')">Hapus</button>`:''}</div>`).join('');
+        if(editMode) document.querySelectorAll('#projectContainer .project-card img').forEach(i=>{i.style.cursor='pointer'; i.title='Ganti logo';});
+    }
+    function renderCertificates(){
+        const cont = document.getElementById("certContainer");
+        if(!cont) return;
+        cont.innerHTML = certificatesList.map(cert => `<div class="certificate-card"><img src="${cert.img}" onclick="${editMode?`changeLogo('certificate','${cert.id}')`:''}" style="cursor:${editMode?'pointer':'default'}"><p>${escapeHtml(cert.name)}</p>${editMode?`<button class="delete-item" onclick="deleteItem('certificate','${cert.id}')">Hapus</button>`:''}</div>`).join('');
+        if(editMode) document.querySelectorAll('#certContainer .certificate-card img').forEach(i=>{i.style.cursor='pointer'; i.title='Ganti logo';});
+    }
+    function renderFotos(){
+        const cont = document.getElementById("fotoContainer");
+        if(!cont) return;
+        if(fotoList.length===0){ cont.innerHTML="<div style='padding:1rem; text-align:center;'>Belum ada foto</div>"; return; }
+        cont.innerHTML = fotoList.map(f => `<div class="media-item"><img src="${f.url}" onclick="openZoom('${f.url}','image')" loading="lazy">${editMode?`<button class="delete-item" onclick="deleteItem('foto','${f.id}')" style="margin-top:5px;">Hapus</button>`:''}</div>`).join('');
+    }
+    function renderVideos(){
+        const cont = document.getElementById("videoContainer");
+        if(!cont) return;
+        if(videoList.length===0){ cont.innerHTML="<div style='padding:1rem; text-align:center;'>Belum ada video</div>"; return; }
+        cont.innerHTML = videoList.map(v => `<div class="media-item"><video controls src="${v.url}" onclick="openZoom('${v.url}','video')" loading="lazy"></video>${editMode?`<button class="delete-item" onclick="deleteItem('video','${v.id}')" style="margin-top:5px;">Hapus</button>`:''}</div>`).join('');
+    }
+
+    window.deleteItem = (type,id) => {
+        if(type==='education') educationList = educationList.filter(e=>e.id!=id);
+        else if(type==='project') projectsList = projectsList.filter(p=>p.id!=id);
+        else if(type==='certificate') certificatesList = certificatesList.filter(c=>c.id!=id);
+        else if(type==='foto') fotoList = fotoList.filter(f=>f.id!=id);
+        else if(type==='video') videoList = videoList.filter(v=>v.id!=id);
+        saveAllToFirebase(); renderAll();
+    };
+    window.openZoom = (url,type) => {
+        const lb = document.getElementById('lightbox');
+        const img = document.getElementById('lightboxImage');
+        const vid = document.getElementById('lightboxVideo');
+        if(type==='image'){ img.style.display='block'; vid.style.display='none'; img.src=url; }
+        else{ img.style.display='none'; vid.style.display='block'; vid.src=url; vid.load(); }
+        lb.classList.add('active');
+    };
+    window.closeLightbox = () => {
+        const lb = document.getElementById('lightbox');
+        const vid = document.getElementById('lightboxVideo');
+        vid.pause(); vid.src = '';
+        lb.classList.remove('active');
+    };
+
+    // EDIT MODE
+    const profileImg = document.getElementById("profileImg");
+    const changePhotoBtn = document.getElementById("changePhotoBtn");
+    let pressTimer = null;
+    function startPress(){
+        pressTimer = setTimeout(() => {
+            let code = prompt("", "");
+            if(code === SECRET_CODE) enableEditMode();
+            else if(code !== null) alert("Akses ditolak");
+            pressTimer = null;
+        }, 1200);
+    }
+    function cancelPress(){ if(pressTimer) clearTimeout(pressTimer); }
+    profileImg.addEventListener("touchstart", (e) => { e.preventDefault(); startPress(); });
+    profileImg.addEventListener("touchend", cancelPress);
+    profileImg.addEventListener("touchcancel", cancelPress);
+    profileImg.addEventListener("mousedown", startPress);
+    profileImg.addEventListener("mouseup", cancelPress);
+    profileImg.addEventListener("mouseleave", cancelPress);
+    function enableEditMode(){
+        if(editMode) return;
+        editMode = true;
+        document.body.classList.add("edit-mode-active");
+        let badge = document.createElement("div"); badge.className = "edit-badge"; badge.innerHTML = "✏️ Edit Aktif <button id='exitEditBtn' class='exit-edit-btn'>Keluar</button>";
+        document.body.appendChild(badge);
+        document.getElementById("exitEditBtn")?.addEventListener("click", disableEditMode);
+        document.querySelectorAll(".editable-text").forEach(el => {
+            el.setAttribute("contenteditable", "true");
+            el.style.cursor = "text";
+            el.addEventListener("blur", () => saveAllToFirebase());
+        });
+        document.getElementById("eduAddWrapper").style.display = "block";
+        document.getElementById("projectAddWrapper").style.display = "block";
+        document.getElementById("fotoAddWrapper").style.display = "block";
+        document.getElementById("videoAddWrapper").style.display = "block";
+        document.getElementById("certAddWrapper").style.display = "block";
+        changePhotoBtn.style.display = "inline-block";
+        renderAll();
+        alert("Mode Edit AKTIF. Klik teks untuk edit, logo untuk ganti. Otomatis tersimpan.");
+    }
+    function disableEditMode(){
+        if(!editMode) return;
+        editMode = false;
+        document.body.classList.remove("edit-mode-active");
+        const badge = document.querySelector(".edit-badge"); if(badge) badge.remove();
+        document.querySelectorAll(".editable-text").forEach(el => {
+            el.setAttribute("contenteditable", "false");
+            el.style.cursor = "pointer";
+        });
+        document.getElementById("eduAddWrapper").style.display = "none";
+        document.getElementById("projectAddWrapper").style.display = "none";
+        document.getElementById("fotoAddWrapper").style.display = "none";
+        document.getElementById("videoAddWrapper").style.display = "none";
+        document.getElementById("certAddWrapper").style.display = "none";
+        changePhotoBtn.style.display = "none";
+        renderAll();
+        alert("Mode Edit NONAKTIF");
+    }
+    profileImg.removeEventListener("mousedown", startPress);
+    profileImg.addEventListener("mousedown", () => { if(editMode) disableEditMode(); else startPress(); });
+    changePhotoBtn.addEventListener("click", () => {
+        if(!editMode) return;
+        const input = document.createElement("input");
+        input.type = "file"; input.accept = "image/*";
+        input.onchange = (ev) => {
+            const file = ev.target.files[0];
+            if(file && file.type.startsWith("image/")){
+                const reader = new FileReader();
+                reader.onload = (e2) => { profileImg.src = e2.target.result; saveAllToFirebase(); };
+                reader.readAsDataURL(file);
+            }
+        };
+        input.click();
+    });
+
+    // Upload foto/video
+    const fotoFileBtn = document.getElementById("addFotoBtnFile");
+    const fotoUrlBtn = document.getElementById("addFotoUrlBtn");
+    const fotoFileInput = document.getElementById("fotoFileInput");
+    const fotoUrlDiv = document.getElementById("fotoUrlInput");
+    const fotoUrlValue = document.getElementById("fotoUrlValue");
+    const submitFotoUrl = document.getElementById("submitFotoUrl");
+    const cancelFotoUrl = document.getElementById("cancelFotoUrl");
+    const videoFileBtn = document.getElementById("addVideoBtnFile");
+    const videoUrlBtn = document.getElementById("addVideoUrlBtn");
+    const videoFileInput = document.getElementById("videoFileInput");
+    const videoUrlDiv = document.getElementById("videoUrlInput");
+    const videoUrlValue = document.getElementById("videoUrlValue");
+    const submitVideoUrl = document.getElementById("submitVideoUrl");
+    const cancelVideoUrl = document.getElementById("cancelVideoUrl");
+
+    function addFotoByUrl(){ let url = fotoUrlValue.value.trim(); if(url){ fotoList.push({ id: Date.now(), url }); saveAllToFirebase(); renderFotos(); fotoUrlValue.value=""; fotoUrlDiv.style.display="none"; } else alert("URL kosong"); }
+    function addVideoByUrl(){ let url = videoUrlValue.value.trim(); if(url){ videoList.push({ id: Date.now(), url }); saveAllToFirebase(); renderVideos(); videoUrlValue.value=""; videoUrlDiv.style.display="none"; } else alert("URL kosong"); }
+    fotoFileBtn?.addEventListener("click", () => { if(editMode) fotoFileInput.click(); else alert("Mode edit tidak aktif"); });
+    fotoUrlBtn?.addEventListener("click", () => { if(editMode) fotoUrlDiv.style.display = "flex"; else alert("Mode edit tidak aktif"); });
+    submitFotoUrl?.addEventListener("click", addFotoByUrl);
+    cancelFotoUrl?.addEventListener("click", () => fotoUrlDiv.style.display = "none");
+    fotoFileInput?.addEventListener("change", (e) => {
+        if(!editMode) return;
+        Array.from(e.target.files).forEach(file => {
+            if(file.type.startsWith("image/")){
+                const reader = new FileReader();
+                reader.onload = ev => { fotoList.push({ id: Date.now(), url: ev.target.result }); saveAllToFirebase(); renderFotos(); };
+                reader.readAsDataURL(file);
+            } else alert("Bukan gambar");
+        });
+        e.target.value = "";
+    });
+    videoFileBtn?.addEventListener("click", () => { if(editMode) videoFileInput.click(); else alert("Mode edit tidak aktif"); });
+    videoUrlBtn?.addEventListener("click", () => { if(editMode) videoUrlDiv.style.display = "flex"; else alert("Mode edit tidak aktif"); });
+    submitVideoUrl?.addEventListener("click", addVideoByUrl);
+    cancelVideoUrl?.addEventListener("click", () => videoUrlDiv.style.display = "none");
+    videoFileInput?.addEventListener("change", (e) => {
+        if(!editMode) return;
+        const file = e.target.files[0];
+        if(file && file.type.startsWith("video/")){
+            if(file.size > 100*1024*1024){ alert("Maksimal 100MB, gunakan URL"); return; }
+            const reader = new FileReader();
+            reader.onload = ev => { videoList.push({ id: Date.now(), url: ev.target.result }); saveAllToFirebase(); renderVideos(); };
+            reader.readAsDataURL(file);
+        } else alert("File video tidak valid");
+        e.target.value = "";
+    });
+
+    // Tambah data (Pendidikan, Proyek, Sertifikat)
+    document.getElementById("addEduBtn")?.addEventListener("click", () => { if(editMode) document.getElementById("eduForm").style.display = "flex"; });
+    document.getElementById("cancelEduBtn")?.addEventListener("click", () => document.getElementById("eduForm").style.display = "none");
+    document.getElementById("saveEduBtn")?.addEventListener("click", () => {
+        if(!editMode) return;
+        let name = document.getElementById("eduName").value.trim(), year = document.getElementById("eduYear").value.trim();
+        if(name){
+            educationList.push({ id: Date.now(), name, year, img: "https://cdn-icons-png.flaticon.com/512/3135/3135715.png" });
+            saveAllToFirebase(); renderEducation();
+            document.getElementById("eduForm").style.display = "none";
+            document.getElementById("eduName").value = ""; document.getElementById("eduYear").value = "";
+        }
+    });
+    document.getElementById("addProjectBtn")?.addEventListener("click", () => { if(editMode) document.getElementById("projectForm").style.display = "flex"; });
+    document.getElementById("cancelProjBtn")?.addEventListener("click", () => document.getElementById("projectForm").style.display = "none");
+    document.getElementById("saveProjBtn")?.addEventListener("click", () => {
+        if(!editMode) return;
+        let name = document.getElementById("projTitle").value.trim(), desc = document.getElementById("projDesc").value.trim();
+        if(name){
+            projectsList.push({ id: Date.now(), name, desc: desc || "-", img: "https://cdn-icons-png.flaticon.com/512/1995/1995572.png" });
+            saveAllToFirebase(); renderProjects();
+            document.getElementById("projectForm").style.display = "none";
+            document.getElementById("projTitle").value = ""; document.getElementById("projDesc").value = "";
+        }
+    });
+    document.getElementById("addCertBtn")?.addEventListener("click", () => { if(editMode) document.getElementById("certForm").style.display = "flex"; });
+    document.getElementById("cancelCertBtn")?.addEventListener("click", () => document.getElementById("certForm").style.display = "none");
+    document.getElementById("saveCertBtn")?.addEventListener("click", () => {
+        if(!editMode) return;
+        let name = document.getElementById("certName").value.trim(), file = document.getElementById("certImageInput").files[0];
+        if(name){
+            if(file){
+                const reader = new FileReader();
+                reader.onload = (e) => { certificatesList.push({ id: Date.now(), name, img: e.target.result }); saveAllToFirebase(); renderCertificates(); };
+                reader.readAsDataURL(file);
+            } else {
+                certificatesList.push({ id: Date.now(), name, img: "https://cdn-icons-png.flaticon.com/512/1055/1055687.png" });
+                saveAllToFirebase(); renderCertificates();
+            }
+            document.getElementById("certForm").style.display = "none";
+            document.getElementById("certName").value = "";
+            document.getElementById("certImageInput").value = "";
+        }
+    });
+
+    // SPLASH & START
+    const splashDiv = document.getElementById("splashScreen");
+    const mainDiv = document.getElementById("mainContent");
+    const startBtn = document.getElementById("startBtn");
+    function showWelcome(){
+        const overlay = document.createElement("div"); overlay.className = "welcome-overlay";
+        const textDiv = document.createElement("div"); textDiv.className = "welcome-text";
+        overlay.appendChild(textDiv); document.body.appendChild(overlay);
+        const words = "selamat datang di portofolio saya".split(" ");
+        let i=0;
+        function add(){
+            if(i<words.length){ textDiv.innerHTML += (i===0?"":" ")+words[i]; i++; setTimeout(add, 140); }
+            else { setTimeout(() => { overlay.classList.add("hide"); setTimeout(() => overlay.remove(), 500); mainDiv.classList.add("visible"); loadFromFirebase(); }, 1600); }
+        }
+        add();
+    }
+    startBtn?.addEventListener("click", () => {
+        splashDiv.classList.add("hide");
+        setTimeout(() => { splashDiv.style.display = "none"; showWelcome(); }, 700);
+    });
+</script>
+</body>
+</html>
